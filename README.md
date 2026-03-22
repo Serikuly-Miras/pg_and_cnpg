@@ -40,9 +40,16 @@ The results are not very surprising, but they are interesting to see how much ov
 | Read-Only pgbench TPS                  | 41101.864478                 | 8562.530432        | 20,83%                   |
 | Read-Write pgbench TPC-B (sort of) TPS | 8114.858496                  | 2671.181028        | 32,91%                   |
 
-## Notes
-
 Both dbs where tuned with the same settings from pg_tuner https://pgtune.leopard.in.ua/ and the same pgbench parameters were used for both benchmarks.
+
+## TODO
+
+- Add more benchmarks (e.g. dwh type load, different sized datasets, different pgbench parameters, etc.)
+- Deep dive into differences in postgres configurations that come out of the box for PG and CNPG
+- Test with local-path storage instead of longhorn
+- Test with Talos instead of K3s
+- Increase benchmark duration to get more stable results
+- Fine tune version parity between PG and CNPG (e.g. use PG 18 with same minor version (.1 and .3 righ now))
 
 ## Usage
 
