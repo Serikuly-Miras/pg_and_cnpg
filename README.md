@@ -4,7 +4,8 @@
 
 Repo containing Terraform and Ansible code for setting up VMs and running benchmarks on Hetzner Cloud.
 
-Heavily skewed and probably unrepresentative benchmarks comparing single node PostgreSQL 18 VS single instance CNPG cluster on top of a k3s cluster with longhorn csi storage perfomance.
+Heavily skewed and probably unrepresentative perfomace benchmarks comparing single node PostgreSQL 18 VS single instance CNPG cluster.
+CNPG is on top of a k3s cluster with longhorn csi storage adapter.
 
 ## Architecture
 
@@ -20,14 +21,14 @@ ccx33 / Ubuntu 24.04.4 LTS (Dedicated VM) / Pgbench Client
     └── 240GB SSD Disk
 
 ccx33 / Ubuntu 24.04.4 LTS (Dedicated VM) / k3s Worker Node
-    ├── 4 vCPU
-    ├── 8GB RAM
-    └── 160GB SSD Disk
-
-cpx32 / Ubuntu 24.04.4 LTS (Shared VM) / k3s Master Node
     ├── 8 vCPU
     ├── 32GB RAM
     └── 240GB SSD Disk
+
+cpx32 / Ubuntu 24.04.4 LTS (Shared VM) / k3s Master Node
+    ├── 4 vCPU
+    ├── 8GB RAM
+    └── 160GB SSD Disk
 ```
 
 ## Results
