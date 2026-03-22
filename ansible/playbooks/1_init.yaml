@@ -1,0 +1,28 @@
+- name: Install common packages and configure firewall
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Update & upgrade packages
+      apt:
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      apt:
+        name: "{{ common_packages }}"
+        state: present
+
+    - name: Setup UFW firewall ssh access
+      ufw:
+        state: enabled
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Allow all traffic between cluster nodes
+      ufw:
+        rule: allow
+        from_ip: "{{ item }}"
+      loop: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | list }}"

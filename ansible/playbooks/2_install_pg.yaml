@@ -1,0 +1,95 @@
+- name: Prepare PostgreSQL 18 VM
+  hosts: pg_vm
+  become: true
+
+  tasks:
+    - name: Run the PostgreSQL repository setup script
+      command: /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+      args:
+        creates: /etc/apt/sources.list.d/pgdg.list
+
+    - name: Update apt cache after adding PostgreSQL repo
+      apt:
+        update_cache: yes
+
+    - name: Install PostgreSQL 18
+      apt:
+        name: postgresql-18
+        state: present
+
+    - name: Get installed PostgreSQL version
+      command: psql --version
+      register: pg_version_result
+      changed_when: false
+
+    - name: Show PostgreSQL version
+      debug:
+        var: pg_version_result.stdout
+
+    - name: Set PostgreSQL configuration parameters
+      lineinfile:
+        path: /etc/postgresql/18/main/postgresql.conf
+        regexp: '^{{ item.key }}\s*='
+        line: "{{ item.key }} = {{ item.value }}"
+        state: present
+        backup: yes
+      loop:
+        - { key: "listen_addresses", value: "'*'" }
+        - { key: "max_connections", value: "{{ postgresql_max_connections }}" }
+        - { key: "shared_buffers", value: "{{ postgresql_shared_buffers }}" }
+        - { key: "effective_cache_size", value: "{{ postgresql_effective_cache_size }}" }
+        - { key: "maintenance_work_mem", value: "{{ postgresql_maintenance_work_mem }}" }
+        - { key: "checkpoint_completion_target", value: "{{ postgresql_checkpoint_completion_target }}" }
+        - { key: "wal_buffers", value: "{{ postgresql_wal_buffers }}" }
+        - { key: "default_statistics_target", value: "{{ postgresql_default_statistics_target }}" }
+        - { key: "random_page_cost", value: "{{ postgresql_random_page_cost }}" }
+        - { key: "effective_io_concurrency", value: "{{ postgresql_effective_io_concurrency }}" }
+        - { key: "work_mem", value: "{{ postgresql_work_mem }}" }
+        - { key: "huge_pages", value: "{{ postgresql_huge_pages }}" }
+        - { key: "min_wal_size", value: "{{ postgresql_min_wal_size }}" }
+        - { key: "max_wal_size", value: "{{ postgresql_max_wal_size }}" }
+        - { key: "max_worker_processes", value: "{{ postgresql_max_worker_processes }}" }
+        - { key: "max_parallel_workers_per_gather", value: "{{ postgresql_max_parallel_workers_per_gather }}" }
+        - { key: "max_parallel_workers", value: "{{ postgresql_max_parallel_workers }}" }
+        - { key: "max_parallel_maintenance_workers", value: "{{ postgresql_max_parallel_maintenance_workers }}" }
+
+    - name: Allow IPv4 access for benchmark user
+      lineinfile:
+        path: /etc/postgresql/18/main/pg_hba.conf
+        insertafter: "^# IPv4 local connections:"
+        line: "host    all    pgbench    0.0.0.0/0    md5"
+        state: present
+        backup: yes
+
+    - name: Restart PostgreSQL to apply config changes
+      service:
+        name: postgresql
+        state: restarted
+
+    - name: Install Python psycopg2
+      apt:
+        name: python3-psycopg2
+        state: present
+      become: true
+
+    - name: Create ansible tmp directory for postgres user
+      file:
+        path: /var/lib/postgresql/.ansible/tmp
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0700'
+
+    - name: Create pgbench user
+      become_user: postgres
+      postgresql_user:
+        name: pgbench
+        password: pgbench
+        state: present
+
+    - name: Create pgbench database owned by pgbench user
+      become_user: postgres
+      postgresql_db:
+        name: pgbench
+        owner: pgbench
+        state: present

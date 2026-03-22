@@ -1,0 +1,14 @@
+---
+- name: Pre-flight checks
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Check connectivity to all hosts
+      ping:
+
+    - name: Verify sudo access
+      command: whoami
+      become: true
+      register: sudo_check
+      failed_when: sudo_check.stdout != "root"
+      changed_when: false

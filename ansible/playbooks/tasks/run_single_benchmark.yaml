@@ -1,0 +1,55 @@
+---
+- name: "Initialize pgbench database for {{ target.name }}"
+  shell: >
+    pgbench -h {{ target.host }}
+    -p {{ target.port }}
+    -U {{ db_username }}
+    {{ db_name }}
+    -i -s {{ pgbench_scale }}
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+  register: init_result
+  failed_when: init_result.rc != 0
+  retries: 3
+  delay: 5
+  tags: [init]
+
+- name: "Run read-write benchmark for {{ target.name }}"
+  shell: >
+    pgbench -h {{ target.host }}
+    -p {{ target.port }}
+    -U {{ db_username }}
+    -c {{ pgbench_clients }}
+    -j {{ pgbench_jobs }}
+    -T {{ pgbench_duration }}
+    {{ db_name }}
+    > {{ temp_dir }}/pgbench_result_{{ target.label }}.txt
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+  register: bench_rw
+  failed_when: bench_rw.rc != 0
+
+- name: "Run read-only benchmark for {{ target.name }}"
+  shell: >
+    pgbench -S
+    -h {{ target.host }}
+    -p {{ target.port }}
+    -U {{ db_username }}
+    -c {{ pgbench_clients }}
+    -j {{ pgbench_jobs }}
+    -T {{ pgbench_duration }}
+    {{ db_name }}
+    > {{ temp_dir }}/pgbench_read_only_result_{{ target.label }}.txt
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+  register: bench_ro
+  failed_when: bench_ro.rc != 0
+
+- name: "Fetch benchmark results for {{ target.name }}"
+  fetch:
+    src: "{{ temp_dir }}/{{ item }}"
+    dest: "{{ results_base_dir }}/pgbench/{{ item }}"
+    flat: yes
+  loop:
+    - "pgbench_result_{{ target.label }}.txt"
+    - "pgbench_read_only_result_{{ target.label }}.txt"

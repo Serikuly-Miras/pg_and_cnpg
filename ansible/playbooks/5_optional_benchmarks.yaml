@@ -1,0 +1,105 @@
+- name: Optional benchmarks
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Remove local pre_bench_results directory if it exists
+      file:
+        path: ./pre_bench_results
+        state: absent
+      delegate_to: localhost
+      run_once: true
+      become: false
+
+    - name: Recreate local pre_bench_results directory
+      file:
+        path: ./pre_bench_results
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+      become: false
+
+    - name: Run sysbench single thread CPU test
+      shell: sysbench --threads=1 cpu run > /tmp/sysbench_single.txt
+      register: sysbench_single
+
+    - name: Fetch sysbench single thread pre_bench_results
+      fetch:
+        src: /tmp/sysbench_single.txt
+        dest: ./pre_bench_results/00_{{ inventory_hostname }}_sysbench_single.txt
+        flat: yes
+
+    - name: Run sysbench all cores CPU test
+      shell: sysbench --threads=$(nproc) cpu run > /tmp/sysbench_multi.txt
+      register: sysbench_multi
+
+    - name: Fetch sysbench all cores pre_bench_results
+      fetch:
+        src: /tmp/sysbench_multi.txt
+        dest: ./pre_bench_results/01_{{ inventory_hostname }}_sysbench_multi.txt
+        flat: yes
+
+    - name: Run sysbench memory test
+      shell: sysbench memory run > /tmp/sysbench_memory.txt
+      register: sysbench_memory
+
+    - name: Fetch sysbench memory pre_bench_results
+      fetch:
+        src: /tmp/sysbench_memory.txt
+        dest: ./pre_bench_results/02_{{ inventory_hostname }}_sysbench_memory.txt
+        flat: yes
+
+    - name: Run speedtest-cli
+      shell: speedtest-cli --secure > /tmp/speedtest.txt
+      register: speedtest_result
+
+    - name: Fetch speedtest pre_bench_results
+      fetch:
+        src: /tmp/speedtest.txt
+        dest: ./pre_bench_results/03_{{ inventory_hostname }}_speedtest.txt
+        flat: yes
+
+    - name: Run fio disk random read IOPS test
+      shell: >
+        fio --filename=/root/fio-test-file
+        --size=4G
+        --direct=1
+        --rw=randread
+        --bs=4k
+        --ioengine=libaio
+        --iodepth=256
+        --runtime=120
+        --numjobs=4
+        --time_based
+        --group_reporting
+        --name=iops-test-job
+        --eta-newline=1 > /tmp/fio-result.txt
+      register: fio_result
+
+    - name: Clean up fio test file
+      file:
+        path: /root/fio-test-file
+        state: absent
+
+    - name: Fetch fio pre_bench_results
+      fetch:
+        src: /tmp/fio-result.txt
+        dest: ./pre_bench_results/05_{{ inventory_hostname }}_fio.txt
+        flat: yes
+
+    - name: Initialize ping pre_bench_results file
+      shell: "echo 'src,dst,avg_lat' > /tmp/ping_all_pre_bench_results.txt"
+
+    - name: Ping all other nodes and append avg latency to pre_bench_results file
+      shell: |
+        target_ip="{{ hostvars[item]['ansible_host'] }}"
+        avg=$(ping -c 10 $target_ip | awk -F'/' '/^rtt/ {print $5}')
+        echo "{{ inventory_hostname }},{{ item }},${avg}" >> /tmp/ping_all_pre_bench_results.txt
+      loop: "{{ groups['all'] | difference([inventory_hostname]) }}"
+
+    - name: Fetch all ping pre_bench_results files
+      fetch:
+        src: /tmp/ping_all_pre_bench_results.txt
+        dest: ./pre_bench_results/ping_pre_bench_results_{{ inventory_hostname }}.txt
+        flat: yes

@@ -1,0 +1,166 @@
+- name: Install k3s master
+  hosts: k3s_master
+  become: true
+  tasks:
+    - name: Install k3s server
+      shell: curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Fetch node token
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: node_token
+
+    - name: Set fact for node token
+      set_fact:
+        k3s_token: "{{ node_token['content'] | b64decode }}"
+
+- name: Install k3s worker
+  hosts: k3s_worker
+  become: true
+  vars:
+    master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] }}"
+    k3s_token: "{{ hostvars[groups['k3s_master'][0]]['k3s_token'] }}"
+  tasks:
+    - name: Install k3s agent
+      shell: |
+        curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+      environment:
+        INSTALL_K3S_EXEC: "agent --server https://{{ master_ip }}:6443 --token {{ k3s_token }}"
+
+- name: Prep cluster
+  hosts: k3s_master
+  become: true
+  tasks:
+    - name: Wait for nodes to be ready
+      shell: |
+        kubectl wait --for=condition=Ready node --all --timeout=120s
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 5
+      delay: 10
+
+    - name: Taint all control-plane nodes
+      shell: |
+        for node in $(kubectl get nodes -l node-role.kubernetes.io/control-plane -o name | awk -F/ '{print $2}'); do
+          kubectl taint node "$node" node-role.kubernetes.io/control-plane=:NoSchedule --overwrite
+        done
+
+    - name: Install Helm
+      shell: |
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 && \
+        chmod 700 get_helm.sh && \
+        ./get_helm.sh
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Install longhorn helm chart
+      shell: |
+        helm repo add longhorn https://charts.longhorn.io && \
+        helm repo update && \
+        helm upgrade --install longhorn longhorn/longhorn \
+          --namespace longhorn-system --create-namespace \
+          --kubeconfig /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for longhorn to be ready
+      shell: |
+        kubectl -n longhorn-system wait --for=condition=Ready pod --timeout=300s --all
+      register: wait_longhorn
+      until: wait_longhorn.rc == 0
+      delay: 15
+
+    - name: Install cnpg operator helm chart
+      shell: |
+        helm repo add cnpg https://cloudnative-pg.github.io/charts && \
+        helm repo update && \
+        helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
+          --namespace cnpg-system --create-namespace \
+          --set defaultClassReplicaCount=1 \
+          --kubeconfig /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for cnpg operator to be ready
+      shell: |
+        kubectl -n cnpg-system wait --for=condition=Ready pod --timeout=300s --all
+      register: wait_cnpg
+      until: wait_cnpg.rc == 0
+      delay: 15
+
+    - name: Create cnpg cluster manifest
+      copy:
+        dest: /tmp/cnpg_cluster.yaml
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: pgbench-db-credentials
+            namespace: {{ cnpg_namespace }}
+          type: Opaque
+          data:
+            username: {{ cnpg_username_b64 }}
+            password: {{ cnpg_password_b64 }}
+          ---
+          apiVersion: postgresql.cnpg.io/v1
+          kind: Cluster
+          metadata:
+            name: {{ cnpg_cluster_name}}
+            namespace: {{ cnpg_namespace }}
+          spec:
+            instances: {{ cnpg_instances }}
+            storage:
+              size: {{ cnpg_storage_size }}
+              storageClass: longhorn
+            bootstrap:
+              initdb:
+                database: {{ db_name }}
+                owner: {{ db_username }}
+                secret:
+                  name: pgbench-db-credentials
+            postgresql:
+              parameters:
+                max_connections: "{{ postgresql_max_connections }}"
+                shared_buffers: "{{ postgresql_shared_buffers }}"
+                effective_cache_size: "{{ postgresql_effective_cache_size }}"
+                maintenance_work_mem: "{{ postgresql_maintenance_work_mem }}"
+                checkpoint_completion_target: "{{ postgresql_checkpoint_completion_target }}"
+                wal_buffers: "{{ postgresql_wal_buffers }}"
+                default_statistics_target: "{{ postgresql_default_statistics_target }}"
+                random_page_cost: "{{ postgresql_random_page_cost }}"
+                effective_io_concurrency: "{{ postgresql_effective_io_concurrency }}"
+                work_mem: "{{ postgresql_work_mem }}"
+                huge_pages: "{{ postgresql_huge_pages }}"
+                min_wal_size: "{{ postgresql_min_wal_size }}"
+                max_wal_size: "{{ postgresql_max_wal_size }}"
+                max_worker_processes: "{{ postgresql_max_worker_processes }}"
+                max_parallel_workers_per_gather: "{{ postgresql_max_parallel_workers_per_gather }}"
+                max_parallel_workers: "{{ postgresql_max_parallel_workers }}"
+                max_parallel_maintenance_workers: "{{ postgresql_max_parallel_maintenance_workers }}"
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: {{ cnpg_cluster_name }}-external
+            namespace: {{ cnpg_namespace }}
+          spec:
+            type: NodePort
+            selector:
+              cnpg.io/cluster: {{ cnpg_cluster_name }}
+            ports:
+              - name: postgres
+                port: 5432
+                targetPort: 5432
+                nodePort: {{ cnpg_nodeport }}
+
+    - name: Apply cnpg cluster manifest
+      shell: |
+        kubectl create ns {{ cnpg_namespace }} || true && \
+        kubectl apply -f /tmp/cnpg_cluster.yaml
+
+    - name: Wait for cnpg cluster to be ready
+      shell: |
+        kubectl -n {{ cnpg_namespace }} wait --for=condition=Ready pod --timeout=300s --all
+      register: wait_pgbench_cluster
+      until: wait_pgbench_cluster.rc == 0
+      delay: 15
