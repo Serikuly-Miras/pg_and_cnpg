@@ -4,7 +4,7 @@
 
 Repo containing Terraform and Ansible code for setting up VMs and running benchmarks on Hetzner Cloud.
 
-Heavily skewed and probably unrepresentative perfomace benchmarks comparing single node PostgreSQL 18 VS single instance CNPG cluster.
+Heavily skewed and probably unrepresentative performance benchmarks comparing single node PostgreSQL 18 VS single instance CNPG cluster.
 CNPG is on top of a k3s cluster with longhorn csi storage adapter.
 
 ## Architecture
@@ -57,4 +57,7 @@ ansible-playbook playbooks/1_init.yaml
 ansible-playbook playbooks/2_install_pg.yaml
 ansible-playbook playbooks/3_install_cnpg.yaml
 ansible-playbook playbooks/4_bench.yaml
+
+# 3. Destroy infrastructure
+cd ../terraform && terraform destroy
 ```
