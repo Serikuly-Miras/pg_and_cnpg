@@ -5,7 +5,7 @@
   tasks:
     - name: Remove local pre_bench_results directory if it exists
       file:
-        path: ./pre_bench_results
+        path: ./results/pre_bench_results
         state: absent
       delegate_to: localhost
       run_once: true
@@ -13,7 +13,7 @@
 
     - name: Recreate local pre_bench_results directory
       file:
-        path: ./pre_bench_results
+        path: ./results/pre_bench_results
         state: directory
         mode: "0755"
       delegate_to: localhost
@@ -27,7 +27,7 @@
     - name: Fetch sysbench single thread pre_bench_results
       fetch:
         src: /tmp/sysbench_single.txt
-        dest: ./pre_bench_results/00_{{ inventory_hostname }}_sysbench_single.txt
+        dest: ./results/pre_bench_results/00_{{ inventory_hostname }}_sysbench_single.txt
         flat: yes
 
     - name: Run sysbench all cores CPU test
@@ -37,7 +37,7 @@
     - name: Fetch sysbench all cores pre_bench_results
       fetch:
         src: /tmp/sysbench_multi.txt
-        dest: ./pre_bench_results/01_{{ inventory_hostname }}_sysbench_multi.txt
+        dest: ./results/pre_bench_results/01_{{ inventory_hostname }}_sysbench_multi.txt
         flat: yes
 
     - name: Run sysbench memory test
@@ -47,7 +47,7 @@
     - name: Fetch sysbench memory pre_bench_results
       fetch:
         src: /tmp/sysbench_memory.txt
-        dest: ./pre_bench_results/02_{{ inventory_hostname }}_sysbench_memory.txt
+        dest: ./results/pre_bench_results/02_{{ inventory_hostname }}_sysbench_memory.txt
         flat: yes
 
     - name: Run speedtest-cli
@@ -57,7 +57,7 @@
     - name: Fetch speedtest pre_bench_results
       fetch:
         src: /tmp/speedtest.txt
-        dest: ./pre_bench_results/03_{{ inventory_hostname }}_speedtest.txt
+        dest: ./results/pre_bench_results/03_{{ inventory_hostname }}_speedtest.txt
         flat: yes
 
     - name: Run fio disk random read IOPS test
@@ -85,7 +85,7 @@
     - name: Fetch fio pre_bench_results
       fetch:
         src: /tmp/fio-result.txt
-        dest: ./pre_bench_results/05_{{ inventory_hostname }}_fio.txt
+        dest: ./results/pre_bench_results/05_{{ inventory_hostname }}_fio.txt
         flat: yes
 
     - name: Initialize ping pre_bench_results file
@@ -101,5 +101,5 @@
     - name: Fetch all ping pre_bench_results files
       fetch:
         src: /tmp/ping_all_pre_bench_results.txt
-        dest: ./pre_bench_results/ping_pre_bench_results_{{ inventory_hostname }}.txt
+        dest: ./results/pre_bench_results/ping_pre_bench_results_{{ inventory_hostname }}.txt
         flat: yes

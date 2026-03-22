@@ -1,0 +1,4 @@
+src,dst,avg_lat
+tf-k3s-worker,tf-k3s-master,0.486
+tf-k3s-worker,tf-pg-client,0.678
+tf-k3s-worker,tf-pg,0.446
