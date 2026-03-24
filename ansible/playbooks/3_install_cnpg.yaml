@@ -111,7 +111,7 @@
             instances: {{ cnpg_instances }}
             storage:
               size: {{ cnpg_storage_size }}
-              storageClass: longhorn
+              storageClass: {{ cnpg_storage_class }}
             bootstrap:
               initdb:
                 database: {{ db_name }}

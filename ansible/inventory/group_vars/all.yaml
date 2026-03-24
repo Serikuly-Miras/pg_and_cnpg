@@ -36,6 +36,7 @@ cnpg_namespace: db
 cnpg_cluster_name: pgbench-cluster
 cnpg_instances: 1
 cnpg_storage_size: "100Gi"
+cnpg_storage_class: "longhorn"
 cnpg_nodeport: 31601
 cnpg_username_b64: cGdiZW5jaA== # base64 for pgbench
 cnpg_password_b64: cGdiZW5jaA== # base64 for pgbench
@@ -44,7 +45,7 @@ cnpg_password_b64: cGdiZW5jaA== # base64 for pgbench
 pgbench_scale: 3000
 pgbench_clients: 295
 pgbench_jobs: "{{ ansible_facts['processor_vcpus'] }}"
-pgbench_duration: 300
+pgbench_duration: 900 # 15 minutes
 
 # Benchmark targets (for looping)
 pgbench_targets:

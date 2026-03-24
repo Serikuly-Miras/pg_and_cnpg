@@ -5,9 +5,9 @@ query mode: simple
 number of clients: 295
 number of threads: 8
 maximum number of tries: 1
-duration: 300 s
-number of transactions actually processed: 2428622
+duration: 900 s
+number of transactions actually processed: 7807195
 number of failed transactions: 0 (0.000%)
-latency average = 36.353 ms
-initial connection time = 1432.347 ms
-tps = 8114.858496 (without initial connection time)
+latency average = 33.988 ms
+initial connection time = 948.595 ms
+tps = 8679.576471 (without initial connection time)
