@@ -1,4 +1,3 @@
----
 - name: "Initialize pgbench database for {{ target.name }}"
   shell: >
     pgbench -h {{ target.host }}

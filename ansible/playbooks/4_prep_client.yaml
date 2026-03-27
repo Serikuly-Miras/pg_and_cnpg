@@ -1,0 +1,46 @@
+- name: Prepare client VM for PostgreSQL benchmarking
+  hosts: client_vm
+  become: true
+
+  tasks:
+    - name: Install PostgreSQL client
+      block:
+        - name: Run the PostgreSQL repository setup script
+          command: /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          args:
+            creates: /etc/apt/sources.list.d/pgdg.list
+
+        - name: Update apt cache after adding PostgreSQL repo
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+
+        - name: Install pgbench client
+          apt:
+            name: postgresql-contrib-18
+            state: present
+
+    - name: TPC-DS
+      block:
+        - name: Install TPC-DS toolkit dependencies
+          apt:
+            name:
+              - git
+              - gcc
+              - make
+              - flex
+              - bison
+              - byacc
+            state: present
+
+        - name: Clone TPC-DS toolkit repository
+          git:
+            repo: https://github.com/databricks/tpcds-kit.git
+            dest: /opt/tpcds-kit
+            version: master
+            update: no
+
+        - name: Build TPC-DS toolkit
+          make:
+            chdir: /opt/tpcds-kit/tools
+            target: all

@@ -1,5 +1,5 @@
-- name: Bechmark PostgreSQL 18 VM performance
-  hosts: pgbench_vm
+- name: Bechmark PostgreSQL 18 VM performance with pgbench
+  hosts: client_vm
   become: true
 
   tasks:
@@ -19,23 +19,6 @@
       run_once: true
       become: false
 
-    - name: Install PostgreSQL client
-      block:
-        - name: Run the PostgreSQL repository setup script
-          command: /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          args:
-            creates: /etc/apt/sources.list.d/pgdg.list
-
-        - name: Update apt cache after adding PostgreSQL repo
-          apt:
-            update_cache: yes
-            cache_valid_time: 3600
-
-        - name: Install pgbench client
-          apt:
-            name: postgresql-contrib-18
-            state: present
-
     - name: Create temp directory
       file:
         path: "{{ temp_dir }}"
@@ -43,8 +26,8 @@
         mode: "0700"
 
     - name: Run benchmarks for all targets
-      include_tasks: tasks/run_single_benchmark.yaml
-      loop: "{{ pgbench_targets }}"
+      include_tasks: tasks/run_single_pgbench_benchmark.yaml
+      loop: "{{ bench_targets }}"
       loop_control:
         loop_var: target
         label: "{{ target.name }}"

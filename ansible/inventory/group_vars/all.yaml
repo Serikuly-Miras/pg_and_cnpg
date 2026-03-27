@@ -48,7 +48,7 @@ pgbench_jobs: "{{ ansible_facts['processor_vcpus'] }}"
 pgbench_duration: 900 # 15 minutes
 
 # Benchmark targets (for looping)
-pgbench_targets:
+bench_targets:
   - name: cnpg
     host: "{{ hostvars[groups['k3s_worker'][0]]['ansible_host'] }}"
     port: "{{ cnpg_nodeport }}"

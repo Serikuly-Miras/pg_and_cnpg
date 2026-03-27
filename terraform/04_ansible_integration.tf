@@ -15,7 +15,7 @@ resource "local_file" "ansible_inventory" {
       "${hcloud_server.k3s-worker.name} ansible_host=${hcloud_server.k3s-worker.ipv4_address}"
     ],
     [""],
-    ["[pgbench_vm]"],
+    ["[client_vm]"],
     [
       "${hcloud_server.pg-client.name} ansible_host=${hcloud_server.pg-client.ipv4_address}"
     ],
